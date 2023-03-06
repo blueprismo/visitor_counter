@@ -2,10 +2,8 @@ const app = require('express')()
 const { MongoClient, ServerApiVersion } = require('mongodb');
 require('dotenv').config()
 
-// Get connection string
+// Get connection string and connect to DB
 const uri = process.env.MONGODB_URI;
-
-// Connect to DB
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
 const visitorCount = async function (req, res, next) {
@@ -13,22 +11,23 @@ const visitorCount = async function (req, res, next) {
   await client.connect();
   // Get our count collection
   const collection = client.db("visitors").collection("count");
-  // Get our number of visitors (if any!)
+  // Get our current number of visitors
   var visitor_counter = await collection.estimatedDocumentCount();
-  console.log(visitor_counter);
 
-  // Check number of visitors
+  // Check current number of visitors
   if (visitor_counter === 0){
-    // First visit! 
-    //document.InsertOne(counter++)
-    console.log('First time !!! ' + visitor_counter + '');
+    // First visit!
+    console.log('First time !!! Total visits = '+ visitor_counter );
+    await collection.insertOne({ counter : 1})
     req.visitor_counter = 0;
   } else {
     // n-th visit
-    //document.InsertOne(initialvalue + 1)
-    console.log('LOGGED ' + visitor_counter + 'times')
-    req.visitor_counter = 0;
+    console.log('LOGGED ' + visitor_counter + ' visits')
+    await collection.insertOne({ counter : visitor_counter + 1})
+    req.visitor_counter = visitor_counter;
   }
+  
+  // close connection
   await client.close()
   next()
 }
@@ -36,8 +35,7 @@ const visitorCount = async function (req, res, next) {
 app.use(visitorCount)
 
 app.get('/', (req, res) => {
-    //res.sendStatus(200)
-    res.send({ some: req.visitor_counter})
+    res.send({ totalVisitors: req.visitor_counter})
 })
 
 app.listen(3000, () => {
