@@ -1,10 +1,7 @@
 const express = require('express')
 const app = express()
-const { MongoClient, ServerApiVersion } = require('mongodb');
-require('dotenv').config()
-
-const uri = process.env.MONGODB_URI;
-const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+const counterFilePath = 'counter.txt';
+const fs = require('fs')
 
 function getCountImage(count) {
   // This is not the greatest way for generating an SVG but it'll do for now
@@ -27,28 +24,52 @@ function getCountImage(count) {
 </svg>
 `
 }
-  
-// get the image
-app.get('/count.svg', async (req, res) => {
+ 
+// Read how many people are there
+function readCounter() {
+  try {
+    const counter = parseInt(fs.readFileSync(counterFilePath, 'utf8'));
+    return isNaN(counter) ? 0 : counter; // If counter is NaN, return 0
+  } catch (err) {
+    // Return 0 if file doesn't exist or there is an error reading the file
+    return 0;
+  }
+}
 
-  const collection = client.db("visitors").collection("count");
-  let visitor_counter = await collection.findOne();
-  if (visitor_counter === null){
+// Function to write the counter value to the file
+function writeCounter(counter) {
+  fs.writeFileSync(counterFilePath, counter.toString());
+}
+
+// Increment the counter and write it back to the file
+function incrementCounter() {
+  const counter = readCounter() + 1;
+  writeCounter(counter);
+}
+
+// Example usage: get the current counter value
+function getCurrentCounter() {
+  const counter = readCounter();
+  console.log('Current counter value:', counter);
+  return counter;
+}
+
+// get the image
+app.get('/count.svg', (req, res) => {
+  let visitor_counter = getCurrentCounter();
+
+  if (visitor_counter === 0){
     visitor_counter = 0;
     visitor_counter.counter = 0;
     // First visit!
     console.log('First time !!! Total visits = 0');
-    await collection.insertOne({ counter : 1})
+    incrementCounter();
     
   } else {
     // n-th visit
-    let newvalue = visitor_counter.counter + 1
-    console.log(newvalue)
-    console.log('LOGGED ' + visitor_counter.counter + ' visits')
-    await collection.updateOne({},{ $set: { counter : newvalue}})
+    console.log('LOGGED ' + visitor_counter + ' visits')
+    incrementCounter();
   }
-
-  //console.log(visitor_counter)
 
   // This helps with GitHub's image cache 
   //   see more: https://rushter.com/counter.svg
@@ -56,9 +77,9 @@ app.get('/count.svg', async (req, res) => {
   'content-type': 'image/svg+xml',
   'cache-control': 'max-age=0, no-cache, no-store, must-revalidate'
   })
-  
+  console.log("Visitor counter before send to func: " + visitor_counter)
   // Send the generated SVG as the result
-  res.send(getCountImage(visitor_counter.counter));
+  res.send(getCountImage(visitor_counter));
 })
 
 const listener = app.listen(3000, () => {
