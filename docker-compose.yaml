@@ -1,0 +1,12 @@
+services:
+  counter:
+    restart: always
+    ports:
+      - 3000:3000
+    image: node:18
+    working_dir: /app
+    container_name: visitorcounter_github
+    user: node # uid = 1000
+    volumes:
+      - /home/blueprismo/projects/visitor_counter:/app
+    command: ["npm","start"]
