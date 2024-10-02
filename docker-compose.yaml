@@ -3,7 +3,7 @@ services:
     restart: always
     ports:
       - 3000:3000
-    image: node:18
+    image: node:20
     working_dir: /app
     container_name: visitorcounter_github
     user: node # uid = 1000
